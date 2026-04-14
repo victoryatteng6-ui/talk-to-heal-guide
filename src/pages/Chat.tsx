@@ -1,10 +1,13 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Send } from "lucide-react";
 import { ChatBubble } from "@/components/ChatBubble";
 import { MicButton } from "@/components/MicButton";
 import { Disclaimer } from "@/components/Disclaimer";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { streamChat } from "@/lib/streamChat";
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   id: string;
@@ -22,6 +25,7 @@ export default function Chat() {
   const [searchParams] = useSearchParams();
   const category = searchParams.get("category");
   const voiceMode = searchParams.get("voice") === "true";
+  const { toast } = useToast();
 
   const [messages, setMessages] = useState<Message[]>(() => {
     const greeting = category && categoryGreetings[category]
@@ -31,31 +35,60 @@ export default function Chat() {
   });
 
   const [input, setInput] = useState("");
-  const [isListening, setIsListening] = useState(voiceMode);
+  const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const sendMessage = useCallback(async (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed || isLoading) return;
+
+    const userMsg: Message = { id: Date.now().toString(), role: "user", content: trimmed };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput("");
+    setIsLoading(true);
+
+    let assistantSoFar = "";
+    const chatMessages = newMessages.map((m) => ({ role: m.role, content: m.content }));
+
+    try {
+      await streamChat({
+        messages: chatMessages,
+        onDelta: (chunk) => {
+          assistantSoFar += chunk;
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.role === "assistant" && last.id.startsWith("stream-")) {
+              return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
+            }
+            return [...prev, { id: "stream-" + Date.now(), role: "assistant", content: assistantSoFar }];
+          });
+        },
+        onDone: () => setIsLoading(false),
+      });
+    } catch (e: any) {
+      setIsLoading(false);
+      toast({ variant: "destructive", title: "Error", description: e.message || "Failed to get response" });
+    }
+  }, [messages, isLoading, toast]);
+
+  const { isListening, transcript, startListening, stopListening, isSupported } = useSpeechRecognition(
+    useCallback((text: string) => {
+      sendMessage(text);
+    }, [sendMessage])
+  );
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = () => {
-    const trimmed = input.trim();
-    if (!trimmed) return;
+  useEffect(() => {
+    if (voiceMode && isSupported) {
+      startListening();
+    }
+  }, []);
 
-    const userMsg: Message = { id: Date.now().toString(), role: "user", content: trimmed };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-
-    // Simulated bot response
-    setTimeout(() => {
-      const botMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: getSimulatedResponse(trimmed, category),
-      };
-      setMessages((prev) => [...prev, botMsg]);
-    }, 800);
-  };
+  const handleSend = () => sendMessage(input);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -64,43 +97,67 @@ export default function Chat() {
     }
   };
 
+  const handleMicClick = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
   return (
     <div className="flex flex-1 flex-col">
-      {/* Chat messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6">
         <div className="container mx-auto max-w-2xl space-y-4">
           {messages.map((msg) => (
             <ChatBubble key={msg.id} role={msg.role} content={msg.content} />
           ))}
+          {isListening && transcript && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-sm text-muted-foreground italic text-right"
+            >
+              🎤 {transcript}
+            </motion.div>
+          )}
+          {isLoading && (
+            <div className="flex gap-1 items-center text-muted-foreground text-sm">
+              <span className="animate-pulse">●</span>
+              <span className="animate-pulse" style={{ animationDelay: "0.2s" }}>●</span>
+              <span className="animate-pulse" style={{ animationDelay: "0.4s" }}>●</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Disclaimer */}
       <div className="container max-w-2xl px-4 pb-2">
         <Disclaimer />
       </div>
 
-      {/* Input bar */}
       <div className="border-t border-border bg-card/80 backdrop-blur-md px-4 py-3">
         <div className="container mx-auto flex max-w-2xl items-center gap-3">
-          <MicButton
-            isListening={isListening}
-            onClick={() => setIsListening((p) => !p)}
-            size="sm"
-          />
+          {isSupported && (
+            <MicButton
+              isListening={isListening}
+              onClick={handleMicClick}
+              size="sm"
+            />
+          )}
           <div className="flex flex-1 items-center rounded-xl border border-input bg-background px-4 py-2 focus-within:ring-2 focus-within:ring-ring">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type your question…"
+              placeholder={isListening ? "Listening…" : "Type your question…"}
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               aria-label="Type your health question"
+              disabled={isLoading}
             />
             <button
               onClick={handleSend}
-              disabled={!input.trim()}
+              disabled={!input.trim() || isLoading}
               className="ml-2 rounded-lg p-2 text-primary transition-colors hover:bg-primary/10 disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Send message"
             >
@@ -111,30 +168,4 @@ export default function Chat() {
       </div>
     </div>
   );
-}
-
-function getSimulatedResponse(input: string, category: string | null): string {
-  const lower = input.toLowerCase();
-  if (lower.includes("headache") || lower.includes("head")) {
-    return "Headaches can have many causes. Try resting in a dark, quiet room, stay hydrated, and consider over-the-counter pain relievers. If headaches are severe, sudden, or persistent, please see a healthcare professional.";
-  }
-  if (lower.includes("cut") || lower.includes("bleed")) {
-    return "For minor cuts: Clean the wound with water, apply gentle pressure with a clean cloth to stop bleeding, then cover with a sterile bandage. Seek medical help if bleeding doesn't stop or the wound is deep.";
-  }
-  if (lower.includes("exercise") || lower.includes("fitness")) {
-    return "Adults should aim for at least 150 minutes of moderate aerobic activity per week. Start slowly if you're new to exercise, and always warm up before workouts. Walking, swimming, and cycling are great starting points!";
-  }
-  if (lower.includes("stress") || lower.includes("anxiety") || lower.includes("mental")) {
-    return "Managing stress is important for overall health. Try deep breathing exercises, regular physical activity, adequate sleep, and mindfulness meditation. Don't hesitate to reach out to a mental health professional for support.";
-  }
-  if (category === "triage") {
-    return "Based on what you've described, I'd recommend monitoring your symptoms. If they worsen or you experience difficulty breathing, chest pain, or high fever, please seek immediate medical attention.";
-  }
-  if (category === "firstaid") {
-    return "For most first aid situations, remember: Stay calm, ensure safety first, and call emergency services if needed. Keep your first aid kit stocked and accessible.";
-  }
-  if (category === "wellness") {
-    return "Great question! A balanced diet, regular exercise, adequate sleep (7-9 hours), and stress management are the pillars of good health. Small, consistent changes make the biggest difference.";
-  }
-  return "That's a good question! While I can offer general health information, remember to consult a healthcare professional for personalized medical advice. Is there something specific about triage, first aid, or wellness I can help with?";
 }
