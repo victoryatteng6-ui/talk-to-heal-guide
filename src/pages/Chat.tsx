@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Send } from "lucide-react";
+import { Send, Phone } from "lucide-react";
 import { ChatBubble } from "@/components/ChatBubble";
 import { MicButton } from "@/components/MicButton";
 import { Disclaimer } from "@/components/Disclaimer";
@@ -105,8 +105,31 @@ export default function Chat() {
     }
   };
 
+  const isEmergency = messages.some(
+    (m) => m.role === "assistant" && m.content.includes("🚨 EMERGENCY:")
+  );
+
   return (
     <div className="flex flex-1 flex-col">
+      {isEmergency && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-destructive px-4 py-3 text-center"
+        >
+          <p className="text-sm font-semibold text-destructive-foreground mb-2">
+            Emergency symptoms detected. Please call emergency services immediately.
+          </p>
+          <a
+            href="tel:911"
+            className="inline-flex items-center gap-2 rounded-lg bg-destructive-foreground px-6 py-2 text-sm font-bold text-destructive transition-transform hover:scale-105"
+          >
+            <Phone className="h-4 w-4" />
+            Call Emergency Services (911)
+          </a>
+        </motion.div>
+      )}
+
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6">
         <div className="container mx-auto max-w-2xl space-y-4">
           {messages.map((msg) => (
