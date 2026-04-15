@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Send, Phone } from "lucide-react";
+import { Send, Phone, Volume2, VolumeX } from "lucide-react";
 import { ChatBubble } from "@/components/ChatBubble";
 import { MicButton } from "@/components/MicButton";
+import { Waveform } from "@/components/Waveform";
 import { Disclaimer } from "@/components/Disclaimer";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { streamChat } from "@/lib/streamChat";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,6 +28,8 @@ export default function Chat() {
   const category = searchParams.get("category");
   const voiceMode = searchParams.get("voice") === "true";
   const { toast } = useToast();
+  const { speak, stop: stopSpeaking, isSpeaking } = useTextToSpeech();
+  const [ttsEnabled, setTtsEnabled] = useState(true);
 
   const [messages, setMessages] = useState<Message[]>(() => {
     const greeting = category && categoryGreetings[category]
@@ -37,10 +41,14 @@ export default function Chat() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastSpokenRef = useRef<string>("");
 
   const sendMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isLoading) return;
+
+    // Stop any ongoing speech when user sends a new message
+    stopSpeaking();
 
     const userMsg: Message = { id: Date.now().toString(), role: "user", content: trimmed };
     const newMessages = [...messages, userMsg];
@@ -64,13 +72,20 @@ export default function Chat() {
             return [...prev, { id: "stream-" + Date.now(), role: "assistant", content: assistantSoFar }];
           });
         },
-        onDone: () => setIsLoading(false),
+        onDone: () => {
+          setIsLoading(false);
+          // Auto-speak the completed response
+          if (ttsEnabled && assistantSoFar && assistantSoFar !== lastSpokenRef.current) {
+            lastSpokenRef.current = assistantSoFar;
+            speak(assistantSoFar);
+          }
+        },
       });
     } catch (e: any) {
       setIsLoading(false);
       toast({ variant: "destructive", title: "Error", description: e.message || "Failed to get response" });
     }
-  }, [messages, isLoading, toast]);
+  }, [messages, isLoading, toast, ttsEnabled, speak, stopSpeaking]);
 
   const { isListening, transcript, startListening, stopListening, isSupported } = useSpeechRecognition(
     useCallback((text: string) => {
@@ -88,6 +103,14 @@ export default function Chat() {
     }
   }, []);
 
+  // Load voices on mount (needed for some browsers)
+  useEffect(() => {
+    window.speechSynthesis?.getVoices();
+    const handleVoices = () => window.speechSynthesis?.getVoices();
+    window.speechSynthesis?.addEventListener?.("voiceschanged", handleVoices);
+    return () => window.speechSynthesis?.removeEventListener?.("voiceschanged", handleVoices);
+  }, []);
+
   const handleSend = () => sendMessage(input);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -101,6 +124,7 @@ export default function Chat() {
     if (isListening) {
       stopListening();
     } else {
+      stopSpeaking(); // Stop TTS when user starts speaking
       startListening();
     }
   };
@@ -151,6 +175,17 @@ export default function Chat() {
               <span className="animate-pulse" style={{ animationDelay: "0.4s" }}>●</span>
             </div>
           )}
+          {isSpeaking && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-2 text-sm text-primary"
+            >
+              <Volume2 className="h-4 w-4" />
+              <Waveform isActive barCount={5} color="primary" />
+              <span className="text-muted-foreground">Speaking…</span>
+            </motion.div>
+          )}
         </div>
       </div>
 
@@ -179,9 +214,20 @@ export default function Chat() {
               disabled={isLoading}
             />
             <button
+              onClick={() => {
+                if (isSpeaking) stopSpeaking();
+                else setTtsEnabled((v) => !v);
+              }}
+              className="ml-1 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={ttsEnabled ? "Mute voice" : "Unmute voice"}
+              title={isSpeaking ? "Stop speaking" : ttsEnabled ? "Voice on" : "Voice off"}
+            >
+              {ttsEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </button>
+            <button
               onClick={handleSend}
               disabled={!input.trim() || isLoading}
-              className="ml-2 rounded-lg p-2 text-primary transition-colors hover:bg-primary/10 disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="ml-1 rounded-lg p-2 text-primary transition-colors hover:bg-primary/10 disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Send message"
             >
               <Send className="h-5 w-5" />
