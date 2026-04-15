@@ -1,11 +1,18 @@
 import { AlertTriangle } from "lucide-react";
 
-export function Disclaimer() {
+interface DisclaimerProps {
+  variant?: "default" | "fixed";
+}
+
+export function Disclaimer({ variant = "default" }: DisclaimerProps) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/50 p-4" role="alert">
-      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
-      <p className="text-sm text-muted-foreground leading-relaxed">
-        <strong className="text-foreground">Disclaimer:</strong> I'm not a doctor. For medical advice, please consult a healthcare professional.
+    <div
+      className="flex items-start gap-3 rounded-lg border px-4 py-3 bg-[hsl(var(--disclaimer))] border-[hsl(var(--disclaimer-border))]"
+      role="alert"
+    >
+      <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[hsl(var(--disclaimer-foreground))]" aria-hidden="true" />
+      <p className="text-sm leading-relaxed text-[hsl(var(--disclaimer-foreground))]">
+        <strong className="font-semibold">Medical Disclaimer:</strong> This is not medical advice. Always consult a qualified healthcare professional for diagnosis and treatment.
       </p>
     </div>
   );
