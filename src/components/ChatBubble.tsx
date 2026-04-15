@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Bot, User } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 interface ChatBubbleProps {
   role: "user" | "assistant";
@@ -30,7 +31,13 @@ export function ChatBubble({ role, content }: ChatBubbleProps) {
             : "bg-chat-bot text-chat-bot-foreground rounded-tl-sm"
         }`}
       >
-        {content}
+        {isUser ? (
+          content
+        ) : (
+          <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0">
+            <ReactMarkdown>{content}</ReactMarkdown>
+          </div>
+        )}
       </div>
     </motion.div>
   );

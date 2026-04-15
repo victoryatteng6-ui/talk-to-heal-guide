@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Send, Phone, Volume2, VolumeX } from "lucide-react";
+import { Send, Phone, Volume2, VolumeX, Mic, MicOff } from "lucide-react";
 import { ChatBubble } from "@/components/ChatBubble";
-import { MicButton } from "@/components/MicButton";
 import { Waveform } from "@/components/Waveform";
 import { Disclaimer } from "@/components/Disclaimer";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
@@ -47,7 +46,6 @@ export default function Chat() {
     const trimmed = text.trim();
     if (!trimmed || isLoading) return;
 
-    // Stop any ongoing speech when user sends a new message
     stopSpeaking();
 
     const userMsg: Message = { id: Date.now().toString(), role: "user", content: trimmed };
@@ -74,7 +72,6 @@ export default function Chat() {
         },
         onDone: () => {
           setIsLoading(false);
-          // Auto-speak the completed response
           if (ttsEnabled && assistantSoFar && assistantSoFar !== lastSpokenRef.current) {
             lastSpokenRef.current = assistantSoFar;
             speak(assistantSoFar);
@@ -103,7 +100,6 @@ export default function Chat() {
     }
   }, []);
 
-  // Load voices on mount (needed for some browsers)
   useEffect(() => {
     window.speechSynthesis?.getVoices();
     const handleVoices = () => window.speechSynthesis?.getVoices();
@@ -124,7 +120,7 @@ export default function Chat() {
     if (isListening) {
       stopListening();
     } else {
-      stopSpeaking(); // Stop TTS when user starts speaking
+      stopSpeaking();
       startListening();
     }
   };
@@ -134,21 +130,28 @@ export default function Chat() {
   );
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col bg-background">
+      {/* Fixed disclaimer at top */}
+      <div className="sticky top-0 z-40 px-4 py-2 bg-background/95 backdrop-blur-sm border-b border-border">
+        <div className="container mx-auto max-w-2xl">
+          <Disclaimer variant="fixed" />
+        </div>
+      </div>
+
       {isEmergency && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-destructive px-4 py-3 text-center"
+          className="bg-destructive px-4 py-4 text-center"
         >
-          <p className="text-sm font-semibold text-destructive-foreground mb-2">
-            Emergency symptoms detected. Please call emergency services immediately.
+          <p className="text-sm font-semibold text-destructive-foreground mb-3">
+            ⚠️ Emergency symptoms detected. Please call emergency services immediately.
           </p>
           <a
             href="tel:911"
-            className="inline-flex items-center gap-2 rounded-lg bg-destructive-foreground px-6 py-2 text-sm font-bold text-destructive transition-transform hover:scale-105"
+            className="inline-flex items-center gap-2 rounded-xl bg-destructive-foreground px-8 py-3 text-sm font-bold text-destructive shadow-lg transition-transform hover:scale-105 active:scale-95"
           >
-            <Phone className="h-4 w-4" />
+            <Phone className="h-5 w-5" />
             Call Emergency Services (911)
           </a>
         </motion.div>
@@ -189,36 +192,56 @@ export default function Chat() {
         </div>
       </div>
 
-      <div className="container max-w-2xl px-4 pb-2">
-        <Disclaimer />
-      </div>
-
-      <div className="border-t border-border bg-card/80 backdrop-blur-md px-4 py-3">
+      {/* Input bar */}
+      <div className="border-t border-border bg-card/90 backdrop-blur-md px-4 py-3">
         <div className="container mx-auto flex max-w-2xl items-center gap-3">
+          {/* Mic button with active color */}
           {isSupported && (
-            <MicButton
-              isListening={isListening}
+            <button
               onClick={handleMicClick}
-              size="sm"
-            />
+              className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                isListening
+                  ? "bg-destructive text-destructive-foreground shadow-lg shadow-destructive/30"
+                  : "bg-primary/10 text-primary hover:bg-primary/20"
+              }`}
+              aria-label={isListening ? "Stop listening" : "Start listening"}
+            >
+              {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+              {isListening && (
+                <span className="absolute inset-0 rounded-full bg-destructive/30 animate-pulse-ring" />
+              )}
+            </button>
           )}
+
           <div className="flex flex-1 items-center rounded-xl border border-input bg-background px-4 py-2 focus-within:ring-2 focus-within:ring-ring">
+            {isListening && (
+              <div className="mr-2">
+                <Waveform isActive barCount={3} color="primary" />
+              </div>
+            )}
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isListening ? "Listening…" : "Type your question…"}
+              placeholder={isListening ? "Listening… speak now" : "Describe your symptoms…"}
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               aria-label="Type your health question"
               disabled={isLoading}
             />
+            {/* Speaker toggle with active color */}
             <button
               onClick={() => {
                 if (isSpeaking) stopSpeaking();
                 else setTtsEnabled((v) => !v);
               }}
-              className="ml-1 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={`ml-1 rounded-lg p-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                isSpeaking
+                  ? "text-primary bg-primary/10"
+                  : ttsEnabled
+                    ? "text-primary hover:bg-primary/10"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
               aria-label={ttsEnabled ? "Mute voice" : "Unmute voice"}
               title={isSpeaking ? "Stop speaking" : ttsEnabled ? "Voice on" : "Voice off"}
             >

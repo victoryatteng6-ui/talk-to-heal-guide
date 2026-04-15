@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Activity, Bandage, Leaf, Mic } from "lucide-react";
+import { Activity, Bandage, Leaf, Mic, Shield, Thermometer, HeartPulse } from "lucide-react";
 import { MicButton } from "@/components/MicButton";
 import { CategoryCard } from "@/components/CategoryCard";
 import { Disclaimer } from "@/components/Disclaimer";
@@ -27,6 +27,42 @@ const categories = [
   },
 ];
 
+const localConcerns = [
+  {
+    icon: Shield,
+    title: "Malaria Prevention",
+    tips: [
+      "Sleep under insecticide-treated mosquito nets",
+      "Use mosquito repellent on exposed skin",
+      "Remove standing water around your home",
+      "Wear long sleeves in the evening",
+      "Seek testing if you have fever with chills",
+    ],
+  },
+  {
+    icon: HeartPulse,
+    title: "Hypertension Tips",
+    tips: [
+      "Reduce salt intake — use herbs for seasoning",
+      "Exercise at least 30 minutes daily",
+      "Monitor your blood pressure regularly",
+      "Limit alcohol and avoid smoking",
+      "Follow the DASH diet (fruits, vegetables, whole grains)",
+    ],
+  },
+  {
+    icon: Thermometer,
+    title: "Fever & Body Hotness",
+    tips: [
+      "'Body hotness' is often a sign of fever",
+      "Stay hydrated — drink plenty of fluids",
+      "Use a damp cloth on the forehead to cool down",
+      "Take paracetamol as directed for relief",
+      "See a doctor if fever persists beyond 3 days",
+    ],
+  },
+];
+
 export default function Index() {
   const [isListening, setIsListening] = useState(false);
   const navigate = useNavigate();
@@ -34,15 +70,19 @@ export default function Index() {
   const handleMicClick = () => {
     setIsListening((prev) => !prev);
     if (!isListening) {
-      // Navigate to chat when starting voice
       setTimeout(() => navigate("/chat?voice=true"), 600);
     }
   };
 
   return (
     <div className="flex flex-col">
+      {/* Disclaimer at top */}
+      <section className="container max-w-3xl px-4 pt-6">
+        <Disclaimer />
+      </section>
+
       {/* Hero */}
-      <section className="relative flex flex-col items-center justify-center px-4 py-20 text-center">
+      <section className="relative flex flex-col items-center justify-center px-4 py-16 text-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -81,7 +121,7 @@ export default function Index() {
       </section>
 
       {/* Categories */}
-      <section className="container px-4 pb-16" aria-labelledby="categories-heading">
+      <section className="container px-4 pb-12" aria-labelledby="categories-heading">
         <h2 id="categories-heading" className="mb-8 text-center font-display text-2xl font-bold text-foreground">
           How can I help you today?
         </h2>
@@ -102,9 +142,42 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Disclaimer */}
-      <section className="container max-w-2xl px-4 pb-16">
-        <Disclaimer />
+      {/* Common Local Concerns */}
+      <section className="container px-4 pb-16" aria-labelledby="local-concerns-heading">
+        <h2 id="local-concerns-heading" className="mb-8 text-center font-display text-2xl font-bold text-foreground">
+          Common Local Health Concerns
+        </h2>
+        <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-3">
+          {localConcerns.map((concern, i) => {
+            const Icon = concern.icon;
+            return (
+              <motion.div
+                key={concern.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + i * 0.1 }}
+                className="rounded-xl border border-border bg-card p-6 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                    <Icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <h3 className="font-display text-lg font-semibold text-foreground">
+                    {concern.title}
+                  </h3>
+                </div>
+                <ul className="space-y-2">
+                  {concern.tips.map((tip, j) => (
+                    <li key={j} className="flex items-start gap-2 text-sm text-muted-foreground">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/50" />
+                      {tip}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            );
+          })}
+        </div>
       </section>
     </div>
   );
