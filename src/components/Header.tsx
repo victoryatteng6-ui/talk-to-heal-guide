@@ -1,4 +1,4 @@
-import { Heart, Settings } from "lucide-react";
+import { Heart } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 export function Header() {
@@ -7,6 +7,8 @@ export function Header() {
   const navItems = [
     { label: "Home", path: "/" },
     { label: "Chat", path: "/chat" },
+    { label: "Wellness", path: "/wellness" },
+    { label: "Labs", path: "/labs" },
     { label: "Settings", path: "/settings" },
   ];
 
