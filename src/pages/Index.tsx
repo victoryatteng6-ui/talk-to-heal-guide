@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Activity, Bandage, Leaf, Mic, Shield, Thermometer, HeartPulse } from "lucide-react";
+import { Activity, Bandage, Leaf, Mic, Shield, Thermometer, HeartPulse, Droplets, FlaskConical, Crown } from "lucide-react";
 import { MicButton } from "@/components/MicButton";
 import { CategoryCard } from "@/components/CategoryCard";
 import { Disclaimer } from "@/components/Disclaimer";
+import { ShareReportButton } from "@/components/ShareReportButton";
 
 const categories = [
   {
@@ -177,6 +178,39 @@ export default function Index() {
               </motion.div>
             );
           })}
+        </div>
+      </section>
+
+      {/* Tools & Growth */}
+      <section className="container px-4 pb-16" aria-labelledby="tools-h">
+        <h2 id="tools-h" className="mb-8 text-center font-display text-2xl font-bold text-foreground">
+          Tools & Services
+        </h2>
+        <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-3">
+          {[
+            { icon: Droplets, title: "Water Tracker", desc: "Log water, earn Health Points, build streaks.", to: "/wellness" },
+            { icon: FlaskConical, title: "Find Nearby Labs", desc: "Book Malaria, Typhoid & more across Nigeria.", to: "/labs" },
+            { icon: Crown, title: "Premium Report", desc: "Detailed PDF you can share with your doctor.", to: "/wellness" },
+          ].map((t, i) => {
+            const Icon = t.icon;
+            return (
+              <motion.button
+                key={t.title}
+                initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 + i * 0.1 }}
+                onClick={() => navigate(t.to)}
+                className="text-left rounded-xl border border-border bg-card p-6 shadow-sm hover:shadow-md transition-shadow hover:border-primary/40"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 mb-4">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="font-display text-lg font-semibold text-foreground">{t.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{t.desc}</p>
+              </motion.button>
+            );
+          })}
+        </div>
+        <div className="mt-8 flex justify-center">
+          <ShareReportButton />
         </div>
       </section>
     </div>
