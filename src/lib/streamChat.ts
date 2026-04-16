@@ -1,23 +1,33 @@
-type Msg = { role: "user" | "assistant"; content: string };
+// Supports multimodal messages (text + images) for vision-capable models.
+type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+export type Msg = { role: "user" | "assistant"; content: string | ContentPart[] };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 export async function streamChat({
   messages,
+  profileContext,
+  signal,
   onDelta,
   onDone,
 }: {
   messages: Msg[];
+  profileContext?: string | null;
+  signal?: AbortSignal;
   onDelta: (deltaText: string) => void;
   onDone: () => void;
 }) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
+    signal,
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, profileContext }),
   });
 
   if (!resp.ok || !resp.body) {
