@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
 import { ReferralTracker } from "@/components/ReferralTracker";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import { Waveform } from "@/components/Waveform";
 
@@ -15,6 +16,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const WellnessPage = lazy(() => import("./pages/WellnessPage"));
 const Labs = lazy(() => import("./pages/Labs"));
 const Admin = lazy(() => import("./pages/Admin"));
+const AuthPage = lazy(() => import("./pages/Auth"));
 
 const queryClient = new QueryClient();
 
@@ -33,23 +35,26 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <ReferralTracker />
-        <div className="flex min-h-screen flex-col">
-          <Header />
-          <main className="flex flex-1 flex-col">
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/chat" element={<Chat />} />
-                <Route path="/wellness" element={<WellnessPage />} />
-                <Route path="/labs" element={<Labs />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </main>
-        </div>
+        <AuthProvider>
+          <ReferralTracker />
+          <div className="flex min-h-screen flex-col">
+            <Header />
+            <main className="flex flex-1 flex-col">
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/chat" element={<Chat />} />
+                  <Route path="/wellness" element={<WellnessPage />} />
+                  <Route path="/labs" element={<Labs />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </main>
+          </div>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

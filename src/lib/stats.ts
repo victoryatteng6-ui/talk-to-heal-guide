@@ -1,4 +1,7 @@
-// Lightweight local-only stats store. In Phase 2 these move to the database.
+// Hybrid stats store: when a user is signed in, mirrors writes to Supabase.
+// When anonymous, falls back to localStorage so the existing UI keeps working.
+import { supabase } from "@/integrations/supabase/client";
+
 type Stats = {
   shares: number;
   referralClicks: number;
@@ -6,7 +9,7 @@ type Stats = {
   premiumRevenueNGN: number;
   labBookings: number;
   waterPoints: number;
-  waterLogs: { date: string; ml: number }[]; // YYYY-MM-DD
+  waterLogs: { date: string; ml: number }[];
   installedAt: string;
   referralCode: string;
 };
@@ -50,11 +53,42 @@ export function saveStats(s: Stats) {
   localStorage.setItem(KEY, JSON.stringify(s));
 }
 
+async function getCurrentUserId(): Promise<string | null> {
+  const { data } = await supabase.auth.getUser();
+  return data.user?.id ?? null;
+}
+
+/** Backwards-compatible bump. Also mirrors specific events to the DB. */
 export function bump<K extends keyof Stats>(key: K, by: Stats[K] extends number ? number : never) {
   const s = loadStats();
   // @ts-expect-error numeric increment for numeric keys
   s[key] = ((s[key] as unknown as number) || 0) + (by as unknown as number);
   saveStats(s);
+
+  // Best-effort DB mirror (fire-and-forget; respects RLS).
+  (async () => {
+    try {
+      const userId = await getCurrentUserId();
+      if (key === "shares") {
+        await supabase.from("share_events").insert({ user_id: userId, channel: "generic" });
+      } else if (key === "labBookings") {
+        await supabase.from("lab_events").insert({ user_id: userId, kind: "lab_booking" });
+      } else if (key === "premiumPurchases" && userId) {
+        await supabase.from("premium_purchases").insert({
+          user_id: userId,
+          amount: 500,
+          currency: "NGN",
+          status: "completed",
+        });
+      } else if (key === "referralClicks") {
+        const code = sessionStorage.getItem("healthvoice.lastref") || "unknown";
+        await supabase.from("referrals").insert({ referral_code: code, user_id: userId });
+      }
+    } catch {
+      // ignore — local state is already updated.
+    }
+  })();
+
   return s;
 }
 
@@ -68,8 +102,18 @@ export function logWater(ml: number) {
   const existing = s.waterLogs.find((l) => l.date === today);
   if (existing) existing.ml += ml;
   else s.waterLogs.push({ date: today, ml });
-  s.waterPoints += Math.max(1, Math.round(ml / 100)); // 1 point per 100ml
+  s.waterPoints += Math.max(1, Math.round(ml / 100));
   saveStats(s);
+
+  (async () => {
+    try {
+      const userId = await getCurrentUserId();
+      if (userId) {
+        await supabase.from("water_logs").insert({ user_id: userId, ml, log_date: today });
+      }
+    } catch { /* ignore */ }
+  })();
+
   return s;
 }
 
