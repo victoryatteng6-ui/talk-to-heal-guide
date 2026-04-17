@@ -12,6 +12,7 @@ export function ReferralTracker() {
     const seenKey = `healthvoice.refseen.${ref}`;
     if (sessionStorage.getItem(seenKey)) return;
     sessionStorage.setItem(seenKey, "1");
+    sessionStorage.setItem("healthvoice.lastref", ref);
     bump("referralClicks", 1);
   }, [location.search]);
   return null;

@@ -1,8 +1,11 @@
-import { Heart } from "lucide-react";
+import { Heart, LogIn, LogOut } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function Header() {
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   const navItems = [
     { label: "Home", path: "/" },
@@ -34,6 +37,19 @@ export function Header() {
               {item.label}
             </Link>
           ))}
+          {user ? (
+            <Button variant="ghost" size="sm" onClick={signOut} className="ml-1">
+              <LogOut className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Sign out</span>
+            </Button>
+          ) : (
+            <Button asChild variant="ghost" size="sm" className="ml-1">
+              <Link to="/auth">
+                <LogIn className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Sign in</span>
+              </Link>
+            </Button>
+          )}
         </nav>
       </div>
     </header>
