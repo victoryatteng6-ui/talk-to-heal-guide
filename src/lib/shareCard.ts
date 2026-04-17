@@ -1,4 +1,5 @@
-// Generates a branded share PNG via Canvas (no external deps).
+// Generates a branded share PNG via Canvas with embedded QR code.
+import QRCode from "qrcode";
 import { loadStats, getReferralLink, todayWaterMl, streakDays } from "./stats";
 import { loadProfile } from "./healthProfile";
 
@@ -46,11 +47,16 @@ export async function generateShareCard(opts: ShareCardOptions = {}): Promise<Bl
   ctx.fillStyle = "rgba(61,188,139,0.08)";
   ctx.beginPath(); ctx.arc(W * 0.1, H * 0.85, 280, 0, Math.PI * 2); ctx.fill();
 
-  // Header pill
+  // Logo mark — circular badge with heart + wordmark
   ctx.fillStyle = MINT;
-  roundRect(ctx, 80, 100, 260, 60, 30); ctx.fill();
-  ctx.fillStyle = "#fff"; ctx.font = "600 26px sans-serif"; ctx.textBaseline = "middle";
-  ctx.fillText("♥  HealthVoice", 110, 130);
+  ctx.beginPath(); ctx.arc(115, 130, 32, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.font = "700 36px sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  ctx.fillText("♥", 115, 132);
+  ctx.textAlign = "left";
+  ctx.fillStyle = INK; ctx.font = "800 32px sans-serif";
+  ctx.fillText("Talk To Heal", 160, 124);
+  ctx.fillStyle = MUTED; ctx.font = "500 20px sans-serif";
+  ctx.fillText("Your pocket health companion", 160, 150);
 
   // Title
   ctx.fillStyle = INK;
@@ -94,23 +100,50 @@ export async function generateShareCard(opts: ShareCardOptions = {}): Promise<Bl
     }
   });
 
-  // Referral CTA pill
+  // Referral CTA pill with QR code on the right
   const link = getReferralLink();
   const pillY = cardY + cardH + 60;
+  const pillH = 200;
   ctx.fillStyle = MINT;
-  roundRect(ctx, 80, pillY, W - 160, 110, 24); ctx.fill();
-  ctx.fillStyle = "#fff"; ctx.font = "700 32px sans-serif";
-  ctx.fillText("Try it free →", 120, pillY + 45);
-  ctx.font = "500 24px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.85)";
-  ctx.fillText(link.replace(/^https?:\/\//, ""), 120, pillY + 80);
+  roundRect(ctx, 80, pillY, W - 160, pillH, 24); ctx.fill();
+
+  // QR code (white tile + scannable code)
+  const qrSize = 160;
+  const qrX = W - 80 - qrSize - 24;
+  const qrY = pillY + (pillH - qrSize) / 2;
+  ctx.fillStyle = "#fff";
+  roundRect(ctx, qrX - 12, qrY - 12, qrSize + 24, qrSize + 24, 12); ctx.fill();
+  try {
+    const qrDataUrl = await QRCode.toDataURL(link, {
+      width: qrSize, margin: 0,
+      color: { dark: INK, light: "#ffffff" },
+    });
+    const qrImg = new Image();
+    await new Promise<void>((res, rej) => {
+      qrImg.onload = () => res();
+      qrImg.onerror = () => rej(new Error("qr load"));
+      qrImg.src = qrDataUrl;
+    });
+    ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+  } catch {
+    // graceful fallback — leave the white tile
+  }
+
+  // CTA text on the left of the pill
+  ctx.fillStyle = "#fff"; ctx.font = "800 38px sans-serif"; ctx.textBaseline = "alphabetic";
+  ctx.fillText("Scan to try free →", 120, pillY + 80);
+  ctx.font = "500 22px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillText(link.replace(/^https?:\/\//, ""), 120, pillY + 118);
+  ctx.font = "500 20px sans-serif"; ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.fillText(`Ref: ${stats.referralCode}`, 120, pillY + 152);
 
   // Footer / watermark
   ctx.fillStyle = MUTED; ctx.font = "500 24px sans-serif";
-  ctx.fillText("Powered by Talk To Heal", 80, H - 70);
-  ctx.fillStyle = MINT_DARK; ctx.font = "700 24px sans-serif";
-  const code = `Ref: ${stats.referralCode}`;
-  const codeW = ctx.measureText(code).width;
-  ctx.fillText(code, W - 80 - codeW, H - 70);
+  ctx.fillText("Powered by Talk To Heal", 80, H - 60);
+  ctx.fillStyle = MINT_DARK; ctx.font = "600 22px sans-serif";
+  const tagline = "talktoheal.app";
+  const tagW = ctx.measureText(tagline).width;
+  ctx.fillText(tagline, W - 80 - tagW, H - 60);
 
   return new Promise((resolve) => canvas.toBlob((b) => resolve(b!), "image/png", 0.95));
 }
