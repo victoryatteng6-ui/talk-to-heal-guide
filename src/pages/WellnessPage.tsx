@@ -3,6 +3,7 @@ import { Disclaimer } from "@/components/Disclaimer";
 import { ShareReportButton } from "@/components/ShareReportButton";
 import { PremiumReportButton } from "@/components/PremiumReportButton";
 import { WhatsAppShareButton } from "@/components/WhatsAppShareButton";
+import { ConsultSpecialistButton } from "@/components/ConsultSpecialistButton";
 
 export default function WellnessPage() {
   return (

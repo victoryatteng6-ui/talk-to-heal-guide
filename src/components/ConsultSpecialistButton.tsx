@@ -20,7 +20,7 @@ export function ConsultSpecialistButton({
   label = "Consult a Specialist",
 }: Props) {
   const handleClick = () => {
-    trackEvent("consult_specialist_click");
+    bump("labBookings", 1); // tracked as outbound lead in admin dashboard
     const url = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
