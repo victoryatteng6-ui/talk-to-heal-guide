@@ -2,6 +2,7 @@ import { WaterTracker } from "@/components/WaterTracker";
 import { Disclaimer } from "@/components/Disclaimer";
 import { ShareReportButton } from "@/components/ShareReportButton";
 import { PremiumReportButton } from "@/components/PremiumReportButton";
+import { WhatsAppShareButton } from "@/components/WhatsAppShareButton";
 
 export default function WellnessPage() {
   return (
@@ -14,6 +15,7 @@ export default function WellnessPage() {
       <WaterTracker />
       <div className="flex flex-wrap justify-center gap-3 pb-10">
         <ShareReportButton />
+        <WhatsAppShareButton />
         <PremiumReportButton />
       </div>
     </div>
