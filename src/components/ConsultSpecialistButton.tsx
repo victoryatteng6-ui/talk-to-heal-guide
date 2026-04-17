@@ -1,6 +1,6 @@
 import { MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { trackEvent } from "@/lib/stats";
+import { bump } from "@/lib/stats";
 
 // Placeholder WhatsApp Business number — replace with your real one later.
 // Format: international, digits only, no '+'.
