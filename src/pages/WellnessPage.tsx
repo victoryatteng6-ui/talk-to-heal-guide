@@ -18,6 +18,7 @@ export default function WellnessPage() {
         <ShareReportButton />
         <WhatsAppShareButton />
         <PremiumReportButton />
+        <ConsultSpecialistButton />
       </div>
     </div>
   );
