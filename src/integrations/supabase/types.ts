@@ -41,6 +41,7 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          paystack_reference: string | null
           status: string
           user_id: string
         }
@@ -49,6 +50,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          paystack_reference?: string | null
           status?: string
           user_id: string
         }
@@ -57,6 +59,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          paystack_reference?: string | null
           status?: string
           user_id?: string
         }
@@ -68,6 +71,8 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          premium_since: string | null
+          premium_status: boolean
           referral_code: string
           updated_at: string
           user_id: string
@@ -77,6 +82,8 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          premium_since?: string | null
+          premium_status?: boolean
           referral_code: string
           updated_at?: string
           user_id: string
@@ -86,6 +93,8 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          premium_since?: string | null
+          premium_status?: boolean
           referral_code?: string
           updated_at?: string
           user_id?: string
