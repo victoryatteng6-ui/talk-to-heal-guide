@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Volume2, Type, Palette, Globe } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Volume2, Type, Palette, Globe, Crown, ExternalLink, LogIn, LogOut, User as UserIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SettingsState {
   voiceSpeed: number;
@@ -10,24 +14,79 @@ interface SettingsState {
 }
 
 export default function SettingsPage() {
+  const { user, signOut } = useAuth();
   const [settings, setSettings] = useState<SettingsState>({
     voiceSpeed: 1,
     language: "en",
     textSize: "medium",
     theme: "light",
   });
+  const [premium, setPremium] = useState<{ status: boolean; since: string | null } | null>(null);
 
   const update = <K extends keyof SettingsState>(key: K, value: SettingsState[K]) =>
     setSettings((prev) => ({ ...prev, [key]: value }));
+
+  useEffect(() => {
+    if (!user) { setPremium(null); return; }
+    supabase
+      .from("profiles")
+      .select("premium_status, premium_since")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setPremium({ status: !!data.premium_status, since: data.premium_since });
+      });
+  }, [user]);
 
   return (
     <div className="container max-w-2xl px-4 py-10">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="font-display text-3xl font-bold text-foreground">Settings</h1>
-        <p className="mt-2 text-muted-foreground">Customize your health assistant experience.</p>
+        <p className="mt-2 text-muted-foreground">Manage your account and customize your experience.</p>
       </motion.div>
 
       <div className="mt-8 space-y-6">
+        <SettingsCard icon={UserIcon} title="Account" description="Your sign-in and subscription status.">
+          {user ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Signed in as</span>
+                <span className="font-medium text-foreground truncate max-w-[60%]">{user.email}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground flex items-center gap-1.5"><Crown className="h-3.5 w-3.5 text-primary" /> Premium</span>
+                {premium?.status ? (
+                  <span className="rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-medium text-primary">
+                    Active{premium.since ? ` · since ${new Date(premium.since).toLocaleDateString()}` : ""}
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Free</span>
+                )}
+              </div>
+              {!premium?.status && (
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/wellness"><Crown className="h-4 w-4 mr-2" /> Upgrade to Premium</Link>
+                </Button>
+              )}
+              <Button variant="ghost" className="w-full" onClick={signOut}>
+                <LogOut className="h-4 w-4 mr-2" /> Sign out
+              </Button>
+            </div>
+          ) : (
+            <Button asChild className="w-full">
+              <Link to="/auth"><LogIn className="h-4 w-4 mr-2" /> Sign in</Link>
+            </Button>
+          )}
+          <a
+            href="https://dashboard.paystack.com"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <ExternalLink className="h-3 w-3" /> Open Paystack dashboard
+          </a>
+        </SettingsCard>
+
         {/* Voice Speed */}
         <SettingsCard icon={Volume2} title="Voice Speed" description="Adjust how fast the assistant speaks.">
           <div className="flex items-center gap-4">
