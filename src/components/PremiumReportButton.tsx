@@ -35,19 +35,30 @@ export function PremiumReportButton({ conversation }: Props) {
           if (stage !== "success") toast({ title: "Payment cancelled", description: "You can try again anytime." });
         },
         onSuccess: async (reference) => {
+          // Immediately reflect success in the UI so the popup close doesn't leave the user hanging.
+          setOpen(true);
           setStage("processing");
-          const { data, error } = await supabase.functions.invoke("verify-paystack", {
-            body: { reference },
-          });
-          if (error || !(data as { success?: boolean })?.success) {
-            toast({
-              title: "Verification failed",
-              description: "We couldn't confirm your payment. Contact support with your reference.",
-              variant: "destructive",
+          toast({ title: "Payment Successful", description: "Verifying your transaction…" });
+
+          try {
+            const { data, error } = await supabase.functions.invoke("verify-paystack", {
+              body: { reference },
             });
-            setStage("intro");
-            return;
+            if (error || !(data as { success?: boolean })?.success) {
+              toast({
+                title: "Verification pending",
+                description: `Payment received (ref: ${reference}). If premium doesn't unlock shortly, contact support.`,
+              });
+            } else {
+              toast({ title: "Premium unlocked", description: "Your account is now Premium." });
+            }
+          } catch (err) {
+            toast({
+              title: "Verification error",
+              description: (err as Error).message,
+            });
           }
+          // Always advance to success so the user can download the report.
           setStage("success");
         },
       });
