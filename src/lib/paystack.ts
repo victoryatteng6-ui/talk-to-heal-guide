@@ -1,6 +1,6 @@
 // Paste your Paystack PUBLIC key here (test or live).
 // Find it in Paystack Dashboard → Settings → API Keys & Webhooks.
-export const PAYSTACK_PUBLIC_KEY = "pk_test_REPLACE_WITH_YOUR_PAYSTACK_PUBLIC_KEY";
+export const PAYSTACK_PUBLIC_KEY = "pk_test_d057e087eb33fdb30545449cd8e51c3b39f4d6ae";
 
 const SCRIPT_SRC = "https://js.paystack.co/v1/inline.js";
 let loaderPromise: Promise<void> | null = null;
