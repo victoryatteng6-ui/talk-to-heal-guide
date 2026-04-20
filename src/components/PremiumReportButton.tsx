@@ -10,7 +10,7 @@ import { openPaystackCheckout } from "@/lib/paystack";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
-const PRICE_NGN = 2500;
+const PRICE_NGN = 2499;
 const PRICE_KOBO = PRICE_NGN * 100;
 
 interface Props {
