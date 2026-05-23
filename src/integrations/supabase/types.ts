@@ -35,6 +35,42 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_labs: {
+        Row: {
+          address: string
+          contact_email: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          latitude: number | null
+          longitude: number | null
+          name: string
+          reg_number: string
+        }
+        Insert: {
+          address: string
+          contact_email?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          reg_number: string
+        }
+        Update: {
+          address?: string
+          contact_email?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          reg_number?: string
+        }
+        Relationships: []
+      }
       premium_purchases: {
         Row: {
           amount: number
