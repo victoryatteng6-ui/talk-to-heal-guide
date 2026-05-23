@@ -262,39 +262,7 @@ export type Database = {
       }
     }
     Views: {
-      partner_labs_public: {
-        Row: {
-          address: string | null
-          created_at: string | null
-          id: string | null
-          is_active: boolean | null
-          latitude: number | null
-          longitude: number | null
-          name: string | null
-          reg_number: string | null
-        }
-        Insert: {
-          address?: string | null
-          created_at?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          latitude?: number | null
-          longitude?: number | null
-          name?: string | null
-          reg_number?: string | null
-        }
-        Update: {
-          address?: string | null
-          created_at?: string | null
-          id?: string | null
-          is_active?: boolean | null
-          latitude?: number | null
-          longitude?: number | null
-          name?: string | null
-          reg_number?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       has_role: {
