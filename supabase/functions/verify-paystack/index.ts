@@ -17,14 +17,14 @@ Deno.serve(async (req) => {
       return json({ error: "Unauthorized" }, 401);
     }
 
-    const supabase = createClient(
+    const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsErr } = await supabase.auth.getClaims(token);
+    const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token);
     if (claimsErr || !claims?.claims?.sub) return json({ error: "Unauthorized" }, 401);
     const userId = claims.claims.sub as string;
 
@@ -34,6 +34,12 @@ Deno.serve(async (req) => {
 
     const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!secret) return json({ error: "Server not configured" }, 500);
+
+    // Admin client bypasses RLS for trusted server-side writes
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
     const verifyRes = await fetch(
       `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
@@ -49,23 +55,42 @@ Deno.serve(async (req) => {
     if (Number(tx?.amount) < PRICE_KOBO) return json({ error: "Amount mismatch" }, 400);
     if (String(tx?.currency).toUpperCase() !== "NGN") return json({ error: "Currency mismatch" }, 400);
 
-    // Idempotent insert by paystack_reference
-    const { error: insertErr } = await supabase
+    // Check if this reference has already been claimed
+    const { data: existing } = await adminClient
       .from("premium_purchases")
-      .insert({
-        user_id: userId,
-        amount: PRICE_NGN,
-        currency: "NGN",
-        status: "completed",
-        paystack_reference: reference,
-      });
+      .select("user_id")
+      .eq("paystack_reference", reference)
+      .maybeSingle();
 
-    // Ignore unique violation (already processed)
-    if (insertErr && !String(insertErr.message).toLowerCase().includes("duplicate")) {
-      return json({ error: "Could not record purchase" }, 500);
+    if (existing) {
+      if (existing.user_id !== userId) {
+        return json({ error: "Reference already used" }, 409);
+      }
+      // Same user retrying — ensure premium is set, then succeed idempotently
+    } else {
+      const { error: insertErr } = await adminClient
+        .from("premium_purchases")
+        .insert({
+          user_id: userId,
+          amount: PRICE_NGN,
+          currency: "NGN",
+          status: "completed",
+          paystack_reference: reference,
+        });
+      if (insertErr) {
+        // Race: another insert won — re-check ownership
+        const { data: race } = await adminClient
+          .from("premium_purchases")
+          .select("user_id")
+          .eq("paystack_reference", reference)
+          .maybeSingle();
+        if (!race || race.user_id !== userId) {
+          return json({ error: "Reference already used" }, 409);
+        }
+      }
     }
 
-    const { error: updateErr } = await supabase
+    const { error: updateErr } = await adminClient
       .from("profiles")
       .update({ premium_status: true, premium_since: new Date().toISOString() })
       .eq("user_id", userId);
