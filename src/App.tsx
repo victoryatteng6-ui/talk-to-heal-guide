@@ -17,6 +17,7 @@ const WellnessPage = lazy(() => import("./pages/WellnessPage"));
 const Labs = lazy(() => import("./pages/Labs"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AuthPage = lazy(() => import("./pages/Auth"));
+const Clinics = lazy(() => import("./pages/Clinics"));
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
                   <Route path="/chat" element={<Chat />} />
                   <Route path="/wellness" element={<WellnessPage />} />
                   <Route path="/labs" element={<Labs />} />
+                  <Route path="/clinics" element={<Clinics />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="*" element={<NotFound />} />

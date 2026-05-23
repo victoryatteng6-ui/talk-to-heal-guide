@@ -12,6 +12,7 @@ export function Header() {
     { label: "Chat", path: "/chat" },
     { label: "Wellness", path: "/wellness" },
     { label: "Labs", path: "/labs" },
+    { label: "Clinics", path: "/clinics" },
     { label: "Settings", path: "/settings" },
   ];
 
