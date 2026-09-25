@@ -45,6 +45,14 @@ Deno.serve(async (req) => {
     const reference = typeof body?.reference === "string" ? body.reference.trim() : "";
     if (!/^[A-Za-z0-9._-]{6,200}$/.test(reference)) return json({ error: "Invalid reference" }, 400);
 
+    const customerEmail = typeof tx?.customer?.email === "string" ? tx.customer.email.trim().toLowerCase() : "";
+    const { data: authUser, error: authUserError } = await adminClient.auth.admin.getUserById(userId);
+    if (authUserError || !authUser?.user) return json({ error: "User lookup failed" }, 500);
+    const accountEmail = (authUser.user.email ?? "").trim().toLowerCase();
+    if (!customerEmail || !accountEmail || customerEmail !== accountEmail) {
+      return json({ error: "Payment account mismatch" }, 403);
+    }
+
     const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!secret) return json({ error: "Server not configured" }, 500);
 
