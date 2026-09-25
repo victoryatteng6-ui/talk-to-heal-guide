@@ -51,6 +51,27 @@ const MAX_MESSAGES = 50;
 const MAX_TEXT_LEN = 4000;
 const MAX_PROFILE_LEN = 800;
 const MAX_IMAGE_PARTS = 4;
+const MAX_REQUEST_BYTES = 8_000_000;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 20;
+const recentRequests = new Map<string, number[]>();
+
+function isRateLimited(userId: string): boolean {
+  const now = Date.now();
+  const recent = (recentRequests.get(userId) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  if (recent.length >= RATE_LIMIT_MAX) {
+    recentRequests.set(userId, recent);
+    return true;
+  }
+  recent.push(now);
+  recentRequests.set(userId, recent);
+  if (recentRequests.size > 5000) {
+    for (const [id, times] of recentRequests) {
+      if (!times.some((t) => now - t < RATE_LIMIT_WINDOW_MS)) recentRequests.delete(id);
+    }
+  }
+  return false;
+}
 
 const EMERGENCY_PATTERNS: RegExp[] = [
   /\\bchest\\s*pain(s)?\\b/i,
@@ -135,6 +156,14 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    const contentLength = Number(req.headers.get("content-length") ?? 0);
+    if (contentLength > MAX_REQUEST_BYTES) {
+      return new Response(JSON.stringify({ error: "Request too large." }), { status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    if (isRateLimited(user.id)) {
+      return new Response(JSON.stringify({ error: "Too many requests. Please wait a minute and try again." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } });
     }
 
     const body = await req.json().catch(() => null);
