@@ -91,17 +91,17 @@ function isRateLimited(userId: string): boolean {
 }
 
 const EMERGENCY_PATTERNS: RegExp[] = [
-  /\\bchest\\s*pain(s)?\\b/i,
-  /\\b(can'?t|cannot|difficulty|trouble|hard\\s+to)\\s+breathe?\\b/i,
-  /\\bchoking\\b/i,
-  /\\b(unconscious|unresponsive|passed\\s+out|fainted)\\b/i,
-  /\\b(stroke|facial\\s+drooping|slurred\\s+speech)\\b/i,
-  /\\b(severe|heavy|uncontroll?ed)\\s+bleeding\\b/i,
-  /\\b(anaphylaxis|severe\\s+allergic)\\b/i,
-  /\\b(seizure|convulsion)\\b/i,
-  /\\b(overdose|poisoning)\\b/i,
-  /\\b(suicide|kill\\s+myself|self[-\\s]?harm)\\b/i,
-  /\\b(cardiac\\s+arrest|heart\\s+attack)\\b/i,
+  /\bchest\s*pain(s)?\b/i,
+  /\b(can'?t|cannot|difficulty|trouble|hard\s+to)\s+breathe?\b/i,
+  /\bchoking\b/i,
+  /\b(unconscious|unresponsive|passed\s+out|fainted)\b/i,
+  /\b(stroke|facial\s+drooping|slurred\s+speech)\b/i,
+  /\b(severe|heavy|uncontroll?ed)\s+bleeding\b/i,
+  /\b(anaphylaxis|severe\s+allergic)\b/i,
+  /\b(seizure|convulsion)\b/i,
+  /\b(overdose|poisoning)\b/i,
+  /\b(suicide|kill\s+myself|self[-\s]?harm)\b/i,
+  /\b(cardiac\s+arrest|heart\s+attack)\b/i,
 ];
 
 function hasEmergencySignal(messages: any[]): boolean {
@@ -185,7 +185,17 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Too many requests. Please wait a minute and try again." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" } });
     }
 
-    const body = await req.json().catch(() => null);
+    const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).byteLength > MAX_REQUEST_BYTES) {
+      return new Response(JSON.stringify({ error: "Request too large." }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = (() => {
+      try { return JSON.parse(rawBody); } catch { return null; }
+    })();
     if (!body || typeof body !== "object") {
       return new Response(JSON.stringify({ error: "Invalid request body." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
