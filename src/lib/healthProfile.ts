@@ -1,4 +1,9 @@
 export interface HealthProfile {
+// Privacy helper: removes the locally stored health profile.
+export function clearProfile() {
+  if (typeof window !== "undefined") localStorage.removeItem(KEY);
+}
+
   age?: string;
   sex?: string;
   allergies?: string;
