@@ -5,6 +5,8 @@ type ContentPart =
 
 export type Msg = { role: "user" | "assistant"; content: string | ContentPart[] };
 
+import { supabase } from "@/integrations/supabase/client";
+
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 export async function streamChat({
