@@ -52,6 +52,32 @@ const MAX_TEXT_LEN = 4000;
 const MAX_PROFILE_LEN = 800;
 const MAX_IMAGE_PARTS = 4;
 
+const EMERGENCY_PATTERNS: RegExp[] = [
+  /\\bchest\\s*pain(s)?\\b/i,
+  /\\b(can'?t|cannot|difficulty|trouble|hard\\s+to)\\s+breathe?\\b/i,
+  /\\bchoking\\b/i,
+  /\\b(unconscious|unresponsive|passed\\s+out|fainted)\\b/i,
+  /\\b(stroke|facial\\s+drooping|slurred\\s+speech)\\b/i,
+  /\\b(severe|heavy|uncontroll?ed)\\s+bleeding\\b/i,
+  /\\b(anaphylaxis|severe\\s+allergic)\\b/i,
+  /\\b(seizure|convulsion)\\b/i,
+  /\\b(overdose|poisoning)\\b/i,
+  /\\b(suicide|kill\\s+myself|self[-\\s]?harm)\\b/i,
+  /\\b(cardiac\\s+arrest|heart\\s+attack)\\b/i,
+];
+
+function hasEmergencySignal(messages: any[]): boolean {
+  return messages.some((m) => {
+    const content = m?.content;
+    if (typeof content === "string") return EMERGENCY_PATTERNS.some((p) => p.test(content));
+    if (Array.isArray(content)) return content.some((p: any) =>
+      p?.type === "text" && typeof p.text === "string" &&
+      EMERGENCY_PATTERNS.some((rx) => rx.test(p.text))
+    );
+    return false;
+  });
+}
+
 function sanitizeContent(content: unknown): string | any[] | null {
   if (typeof content === "string") return content.slice(0, MAX_TEXT_LEN);
   if (Array.isArray(content)) {
@@ -123,6 +149,15 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "No valid messages provided." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    if (hasEmergencySignal(messages)) {
+      const emergencyText =
+        "🚨 EMERGENCY: This message may describe a medical emergency. Please contact local emergency services (112 in Nigeria) or go to the nearest emergency department now. Do not wait for this app to diagnose or treat the situation. If possible, stay with the person and follow instructions from emergency professionals.";
+      return new Response(
+        "data: " + JSON.stringify({ choices: [{ delta: { content: emergencyText } }] }) + "\n\ndata: [DONE]\n\n",
+        { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } }
+      );
     }
 
     const rawProfile = (body as any).profileContext;
