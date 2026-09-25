@@ -4,8 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { UserCog, ShieldCheck } from "lucide-react";
-import { HealthProfile, loadProfile, saveProfile } from "@/lib/healthProfile";
+import { UserCog, ShieldCheck, Trash2 } from "lucide-react";
+import { HealthProfile, clearProfile, loadProfile, saveProfile } from "@/lib/healthProfile";
 import { useToast } from "@/hooks/use-toast";
 
 export function HealthProfileSheet() {
@@ -17,6 +17,12 @@ export function HealthProfileSheet() {
 
   const update = <K extends keyof HealthProfile>(k: K, v: HealthProfile[K]) =>
     setP((prev) => ({ ...prev, [k]: v }));
+
+  const handleClear = () => {
+    clearProfile();
+    setP({});
+    toast({ title: "Health profile cleared", description: "Saved health-profile information was removed from this device." });
+  };
 
   const handleSave = () => {
     saveProfile(p);
@@ -91,6 +97,9 @@ export function HealthProfileSheet() {
           <SheetClose asChild>
             <Button variant="ghost">Cancel</Button>
           </SheetClose>
+          <Button variant="destructive" onClick={handleClear} className="mr-auto gap-2">
+            <Trash2 className="h-4 w-4" /> Clear profile
+          </Button>
           <Button onClick={handleSave}>Save Profile</Button>
         </SheetFooter>
       </SheetContent>
