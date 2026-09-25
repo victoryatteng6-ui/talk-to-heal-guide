@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return json({ error: "Unauthorized" }, 401);
+      return json({ error: "Unauthorized" }, 401, corsHeaders);
     }
 
     const userClient = createClient(
@@ -38,15 +38,15 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: claims, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claims?.claims?.sub) return json({ error: "Unauthorized" }, 401);
+    if (claimsErr || !claims?.claims?.sub) return json({ error: "Unauthorized" }, 401, corsHeaders);
     const userId = claims.claims.sub as string;
 
     const body = await req.json().catch(() => ({}));
     const reference = typeof body?.reference === "string" ? body.reference.trim() : "";
-    if (!/^[A-Za-z0-9._-]{6,200}$/.test(reference)) return json({ error: "Invalid reference" }, 400);
+    if (!/^[A-Za-z0-9._-]{6,200}$/.test(reference)) return json({ error: "Invalid reference" }, 400, corsHeaders);
 
     const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
-    if (!secret) return json({ error: "Server not configured" }, 500);
+    if (!secret) return json({ error: "Server not configured" }, 500, corsHeaders);
 
     // Admin client bypasses RLS for trusted server-side writes
     const adminClient = createClient(
@@ -60,20 +60,20 @@ Deno.serve(async (req) => {
     );
     const verifyJson = await verifyRes.json().catch(() => null);
     if (!verifyRes.ok || !verifyJson?.status) {
-      return json({ error: "Verification failed" }, 400);
+      return json({ error: "Verification failed" }, 400, corsHeaders);
     }
 
     const tx = verifyJson.data;
-    if (tx?.status !== "success") return json({ error: "Payment not successful" }, 400);
-    if (Number(tx?.amount) !== PRICE_KOBO) return json({ error: "Amount mismatch" }, 400);
-    if (String(tx?.currency).toUpperCase() !== "NGN") return json({ error: "Currency mismatch" }, 400);
-    if (String(tx?.reference ?? "") !== reference) return json({ error: "Reference mismatch" }, 400);
+    if (tx?.status !== "success") return json({ error: "Payment not successful" }, 400, corsHeaders);
+    if (Number(tx?.amount) !== PRICE_KOBO) return json({ error: "Amount mismatch" }, 400, corsHeaders);
+    if (String(tx?.currency).toUpperCase() !== "NGN") return json({ error: "Currency mismatch" }, 400, corsHeaders);
+    if (String(tx?.reference ?? "") !== reference) return json({ error: "Reference mismatch" }, 400, corsHeaders);
     const customerEmail = typeof tx?.customer?.email === "string" ? tx.customer.email.trim().toLowerCase() : "";
     const { data: authUser, error: authUserError } = await adminClient.auth.admin.getUserById(userId);
-    if (authUserError || !authUser?.user) return json({ error: "User lookup failed" }, 500);
+    if (authUserError || !authUser?.user) return json({ error: "User lookup failed" }, 500, corsHeaders);
     const accountEmail = (authUser.user.email ?? "").trim().toLowerCase();
     if (!customerEmail || !accountEmail || customerEmail !== accountEmail) {
-      return json({ error: "Payment account mismatch" }, 403);
+      return json({ error: "Payment account mismatch" }, 403, corsHeaders);
     }
 
     // Check if this reference has already been claimed
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
 
     if (existing) {
       if (existing.user_id !== userId) {
-        return json({ error: "Reference already used" }, 409);
+        return json({ error: "Reference already used" }, 409, corsHeaders);
       }
       // Same user retrying — ensure premium is set, then succeed idempotently
     } else {
@@ -115,15 +115,15 @@ Deno.serve(async (req) => {
       .from("profiles")
       .update({ premium_status: true, premium_since: new Date().toISOString() })
       .eq("user_id", userId);
-    if (updateErr) return json({ error: "Could not update profile" }, 500);
+    if (updateErr) return json({ error: "Could not update profile" }, 500, corsHeaders);
 
-    return json({ success: true });
+    return json({ success: true }, 200, corsHeaders);
   } catch (_e) {
-    return json({ error: "Unexpected error" }, 500);
+    return json({ error: "Unexpected error" }, 500, corsHeaders);
   }
 });
 
-function json(data: unknown, status = 200) {
+function json(data: unknown, status = 200, corsHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(data), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
