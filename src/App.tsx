@@ -5,6 +5,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Header } from "@/components/Header";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { ReferralTracker } from "@/components/ReferralTracker";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
@@ -20,6 +22,15 @@ const AuthPage = lazy(() => import("./pages/Auth"));
 const Clinics = lazy(() => import("./pages/Clinics"));
 
 const queryClient = new QueryClient();
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <PageLoader />;
+  if (!user) return <Navigate to="/auth" replace state={{ from: location.pathname + location.search }} />;
+  return <>{children}</>;
+}
 
 function PageLoader() {
   return (
@@ -45,7 +56,7 @@ const App = () => (
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/auth" element={<AuthPage />} />
-                  <Route path="/chat" element={<Chat />} />
+                  <Route path="/chat" element={<RequireAuth><Chat /></RequireAuth>} />
                   <Route path="/wellness" element={<WellnessPage />} />
                   <Route path="/labs" element={<Labs />} />
                   <Route path="/clinics" element={<Clinics />} />
