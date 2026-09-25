@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
     const tx = verifyJson.data;
     if (tx?.status !== "success") return json({ error: "Payment not successful" }, 400);
-    if (Number(tx?.amount) < PRICE_KOBO) return json({ error: "Amount mismatch" }, 400);
+    if (Number(tx?.amount) !== PRICE_KOBO) return json({ error: "Amount mismatch" }, 400);
     if (String(tx?.currency).toUpperCase() !== "NGN") return json({ error: "Currency mismatch" }, 400);
 
     // Check if this reference has already been claimed
