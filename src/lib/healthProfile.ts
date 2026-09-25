@@ -1,9 +1,4 @@
 export interface HealthProfile {
-// Privacy helper: removes the locally stored health profile.
-export function clearProfile() {
-  if (typeof window !== "undefined") localStorage.removeItem(KEY);
-}
-
   age?: string;
   sex?: string;
   allergies?: string;
@@ -27,6 +22,10 @@ export function saveProfile(p: HealthProfile) {
   localStorage.setItem(KEY, JSON.stringify(p));
 }
 
+export function clearProfile() {
+  if (typeof window !== "undefined") localStorage.removeItem(KEY);
+}
+
 export function profileToContext(p: HealthProfile): string | null {
   const lines: string[] = [];
   if (p.age) lines.push(`Age: ${p.age}`);
@@ -35,5 +34,5 @@ export function profileToContext(p: HealthProfile): string | null {
   if (p.medications?.trim()) lines.push(`Current medications: ${p.medications.trim()}`);
   if (p.conditions?.trim()) lines.push(`Existing conditions: ${p.conditions.trim()}`);
   if (!lines.length) return null;
-  return `## USER HEALTH PROFILE (use to personalize advice; flag drug/allergy interactions)\n${lines.join("\n")}`;
+  return `## USER HEALTH PROFILE (use to personalize advice; flag drug/allergy interactions)\\n${lines.join("\\n")}`;
 }
