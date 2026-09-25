@@ -12,6 +12,30 @@ alter table public.referrals enable row level security;
 alter table public.partner_labs enable row level security;
 
 -- Admins can read operational data; normal users can only access their own records.
+-- Make the migration safe to re-run during deployment.
+drop policy if exists "admins_read_profiles" on public.profiles;
+drop policy if exists "users_read_own_profile" on public.profiles;
+drop policy if exists "users_update_own_profile" on public.profiles;
+drop policy if exists "admins_read_user_roles" on public.user_roles;
+drop policy if exists "users_read_own_role" on public.user_roles;
+drop policy if exists "admins_read_purchases" on public.premium_purchases;
+drop policy if exists "users_read_own_purchases" on public.premium_purchases;
+drop policy if exists "admins_read_vitals" on public.vital_signs;
+drop policy if exists "users_manage_own_vitals" on public.vital_signs;
+drop policy if exists "admins_read_water" on public.water_logs;
+drop policy if exists "users_manage_own_water" on public.water_logs;
+drop policy if exists "admins_read_lab_events" on public.lab_events;
+drop policy if exists "users_insert_own_lab_events" on public.lab_events;
+drop policy if exists "users_read_own_lab_events" on public.lab_events;
+drop policy if exists "admins_read_share_events" on public.share_events;
+drop policy if exists "users_insert_own_share_events" on public.share_events;
+drop policy if exists "users_read_own_share_events" on public.share_events;
+drop policy if exists "admins_read_referrals" on public.referrals;
+drop policy if exists "users_insert_referrals" on public.referrals;
+drop policy if exists "users_read_own_referrals" on public.referrals;
+drop policy if exists "public_read_active_partner_labs" on public.partner_labs;
+drop policy if exists "admins_manage_partner_labs" on public.partner_labs;
+
 create policy "admins_read_profiles" on public.profiles for select using (public.has_role(auth.uid(), 'admin'));
 create policy "users_read_own_profile" on public.profiles for select using (auth.uid() = user_id);
 create policy "users_update_own_profile" on public.profiles for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
