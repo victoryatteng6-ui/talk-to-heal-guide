@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const reference = typeof body?.reference === "string" ? body.reference.trim() : "";
-    if (!reference || reference.length > 200) return json({ error: "Invalid reference" }, 400);
+    if (!/^[A-Za-z0-9._-]{6,200}$/.test(reference)) return json({ error: "Invalid reference" }, 400);
 
     const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!secret) return json({ error: "Server not configured" }, 500);
@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
     if (tx?.status !== "success") return json({ error: "Payment not successful" }, 400);
     if (Number(tx?.amount) !== PRICE_KOBO) return json({ error: "Amount mismatch" }, 400);
     if (String(tx?.currency).toUpperCase() !== "NGN") return json({ error: "Currency mismatch" }, 400);
+    if (String(tx?.reference ?? "") !== reference) return json({ error: "Reference mismatch" }, 400);
 
     // Check if this reference has already been claimed
     const { data: existing } = await adminClient
