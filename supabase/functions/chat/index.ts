@@ -106,6 +106,7 @@ const EMERGENCY_PATTERNS: RegExp[] = [
 
 function hasEmergencySignal(messages: any[]): boolean {
   return messages.some((m) => {
+    if (m?.role !== "user") return false;
     const content = m?.content;
     if (typeof content === "string") return EMERGENCY_PATTERNS.some((p) => p.test(content));
     if (Array.isArray(content)) return content.some((p: any) =>
@@ -127,7 +128,7 @@ function sanitizeContent(content: unknown): string | any[] | null {
         parts.push({ type: "text", text: p.text.slice(0, MAX_TEXT_LEN) });
       } else if (p.type === "image_url" && imgs < MAX_IMAGE_PARTS) {
         const url = typeof p.image_url === "string" ? p.image_url : p.image_url?.url;
-        if (typeof url === "string" && (url.startsWith("data:image/") || url.startsWith("https://"))) {
+        if (typeof url === "string" && url.startsWith("data:image/")) {
           parts.push({ type: "image_url", image_url: { url: url.slice(0, 2_000_000) } });
           imgs++;
         }
