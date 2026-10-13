@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { MAX_MESSAGES, MAX_PROFILE_LEN, MAX_REQUEST_BYTES, sanitizeMessages } from "./chat-helpers.ts";
+import { MAX_PROFILE_LEN, MAX_REQUEST_BYTES, sanitizeMessages } from "./chat-helpers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
