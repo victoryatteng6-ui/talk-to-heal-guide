@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { MAX_MESSAGES, MAX_PROFILE_LEN, MAX_REQUEST_BYTES, sanitizeMessages } from "./chat-helpers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,53 +46,29 @@ Use a provided health profile only as user-supplied context. Consider stated age
 - If information is uncertain or symptoms are concerning, recommend a qualified healthcare professional.
 - Always end every response with: "⚠️ This is not medical advice. Please consult a healthcare professional."`;
 
-// --- Validation helpers ---
-const MAX_MESSAGES = 50;
-const MAX_TEXT_LEN = 4000;
-const MAX_PROFILE_LEN = 800;
-const MAX_IMAGE_PARTS = 4;
-
-function sanitizeContent(content: unknown): string | any[] | null {
-  if (typeof content === "string") return content.slice(0, MAX_TEXT_LEN);
-  if (Array.isArray(content)) {
-    const parts: any[] = [];
-    let imgs = 0;
-    for (const p of content) {
-      if (!p || typeof p !== "object") continue;
-      if (p.type === "text" && typeof p.text === "string") {
-        parts.push({ type: "text", text: p.text.slice(0, MAX_TEXT_LEN) });
-      } else if (p.type === "image_url" && imgs < MAX_IMAGE_PARTS) {
-        const url = typeof p.image_url === "string" ? p.image_url : p.image_url?.url;
-        if (typeof url === "string" && (url.startsWith("data:image/") || url.startsWith("https://"))) {
-          parts.push({ type: "image_url", image_url: { url: url.slice(0, 2_000_000) } });
-          imgs++;
-        }
-      }
-    }
-    return parts.length ? parts : null;
-  }
-  return null;
-}
-
-function sanitizeMessages(input: unknown): any[] {
-  if (!Array.isArray(input)) return [];
-  const out: any[] = [];
-  for (const m of input.slice(-MAX_MESSAGES)) {
-    if (!m || typeof m !== "object") continue;
-    const role = (m as any).role;
-    if (role !== "user" && role !== "assistant") continue; // strip system/tool/etc.
-    const content = sanitizeContent((m as any).content);
-    if (content === null || (typeof content === "string" && !content.trim())) continue;
-    out.push({ role, content });
-  }
-  return out;
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed." }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json", "Allow": "POST, OPTIONS" },
+    });
+  }
 
   try {
-    const body = await req.json().catch(() => null);
+    const contentLength = Number(req.headers.get("content-length") || 0);
+    if (contentLength > MAX_REQUEST_BYTES) {
+      return new Response(JSON.stringify({ error: "Request too large. Please reduce the message or number of images." }), {
+        status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const rawBody = await req.text();
+    if (new TextEncoder().encode(rawBody).byteLength > MAX_REQUEST_BYTES) {
+      return new Response(JSON.stringify({ error: "Request too large. Please reduce the message or number of images." }), {
+        status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const body = (() => { try { return JSON.parse(rawBody); } catch { return null; } })();
     if (!body || typeof body !== "object") {
       return new Response(JSON.stringify({ error: "Invalid request body." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
