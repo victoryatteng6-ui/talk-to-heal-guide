@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { MAX_PROFILE_LEN, MAX_REQUEST_BYTES, sanitizeMessages } from "./chat-helpers.ts";
+import { MAX_PROFILE_LEN, MAX_REQUEST_BYTES, readLimitedBody, sanitizeMessages } from "./chat-helpers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,8 +62,8 @@ serve(async (req) => {
         status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const rawBody = await req.text();
-    if (new TextEncoder().encode(rawBody).byteLength > MAX_REQUEST_BYTES) {
+    const rawBody = await readLimitedBody(req, MAX_REQUEST_BYTES);
+    if (rawBody === null) {
       return new Response(JSON.stringify({ error: "Request too large. Please reduce the message or number of images." }), {
         status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
