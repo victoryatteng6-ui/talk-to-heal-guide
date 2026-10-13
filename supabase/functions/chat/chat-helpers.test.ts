@@ -63,3 +63,23 @@ Deno.test("sanitizeMessages ignores malformed entries and blank messages", () =>
     throw new Error("Malformed and blank entries should be ignored.");
   }
 });
+
+Deno.test("readLimitedBody rejects an oversized streamed request body", async () => {
+  const { readLimitedBody } = await import("./chat-helpers.ts");
+  const req = new Request("https://example.test", {
+    method: "POST",
+    body: "0123456789",
+  });
+  const result = await readLimitedBody(req, 5);
+  if (result !== null) throw new Error("Oversized request body should be rejected.");
+});
+
+Deno.test("readLimitedBody accepts a request within its byte limit", async () => {
+  const { readLimitedBody } = await import("./chat-helpers.ts");
+  const req = new Request("https://example.test", {
+    method: "POST",
+    body: "hello",
+  });
+  const result = await readLimitedBody(req, 5);
+  if (result !== "hello") throw new Error("Expected the bounded request body to be returned.");
+});
